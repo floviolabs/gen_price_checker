@@ -1,0 +1,37 @@
+import 'package:get/get.dart';
+
+class Dimensions {
+  //Parents
+  static double screenHeight = Get.context!.height; //1122
+  static double screenWidth = Get.context!.width; //540
+
+  //Height
+  static double h2 = screenHeight / 561;
+  static double h3 = screenHeight / 374;
+  static double h5 = screenHeight / 224.4;
+  static double h7 = screenHeight / 160.3;
+
+  //Width
+  static double w2 = screenWidth / 270;
+  static double w3 = screenWidth / 180;
+  static double w5 = screenWidth / 108;
+  static double w7 = screenWidth / 77.143;
+
+  //Radius
+  static double rad5 = h5;
+  static double rad10 = h5 * 2;
+  static double rad20 = h5 * 4;
+  static double rad25 = h5 * 5;
+
+  //Font & Icon
+  static double font12 = h2 * 6;
+  static double font14 = h2 * 7;
+  static double font16 = h2 * 8;
+  static double font18 = h2 * 9;
+  static double font20 = h2 * 10;
+  static double font24 = h2 * 12;
+  static double font30 = h2 * 15;
+
+  //Carousel
+  static double carouselHeight = screenHeight / 4;
+}
