@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:gen_price_checker/utilities/scanner.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gen_price_checker/routes/route_helper.dart';
 import 'package:http/http.dart' as http;
 
@@ -80,16 +82,58 @@ void dispose() {
 
 class _DashboardPageState extends State<DashboardPage> {
   final barcodeController = TextEditingController();
-
+  String deviceId = "";
   String mResultAction = "";
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
     registerScannerBroadcast();
+    checkDeviceId();
   }
 
   void registerScannerBroadcast() {}
+
+  Future<void> checkDeviceId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? storedDeviceId = prefs.getString('device_id');
+
+    if (storedDeviceId == null) {
+      // If no device ID in storage, fetch it
+      await getDeviceId();
+      Get.offNamed(Routes.getWaitingConfigurationPage());
+    } else {
+      // If device ID exists, use it and remain on the dashboard
+      deviceId = storedDeviceId;
+      setState(() {
+        isLoading = false;  // Stop loading once device ID is fetched
+      });
+    }
+  }
+
+  Future<void> getDeviceId() async {
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    try {
+      if (Theme.of(context).platform == TargetPlatform.android) {
+        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        deviceId = androidInfo.id;  // Use `id` instead of `androidId`
+      } else if (Theme.of(context).platform == TargetPlatform.iOS) {
+        IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+        deviceId = iosInfo.identifierForVendor ?? "";  // Retrieve device ID for iOS
+      }
+
+      // Store the device ID in local storage
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('device_id', deviceId);
+
+      // Navigate to waiting configuration page
+      Get.offNamed(Routes.getWaitingConfigurationPage());
+    } catch (e) {
+      // Handle error
+      print('Failed to get device ID: $e');
+    }
+  }
 
   // void _scannerReceiver(Map<String, dynamic> message) {
 
@@ -102,7 +146,7 @@ class _DashboardPageState extends State<DashboardPage> {
   FocusNode barcodeFocusNode = FocusNode();
   @override
   Widget build(BuildContext context) {
-    // double screenWidth = MediaQuery.of(context).size.width;
+
     double screenHeight = MediaQuery.of(context).size.height;
 
     double h2 = screenHeight / 561;
@@ -131,24 +175,53 @@ class _DashboardPageState extends State<DashboardPage> {
     // double font30 = h2 * 15;
 
     return Scaffold(
-        backgroundColor: const Color.fromARGB(255, 173, 33, 129),
-        body: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
+      backgroundColor: const Color.fromARGB(255, 173, 33, 129),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator()) // Show loading while fetching the device ID
+          : SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
             child: GestureDetector(
-                onTap: () {
-                  barcodeController.clear();
-                  FocusScope.of(context).requestFocus(barcodeFocusNode);
-                },
-                child: Container(
-                  color: Colors.transparent,
-                  height: screenHeight,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
+              onTap: () {
+                FocusScope.of(context).unfocus();
+              },
+              child: Container(
+                color: Colors.transparent,
+                height: screenHeight,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // AEON Store + Device ID
+                    Container(
+                      margin: const EdgeInsets.only(top: 50),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'ÆON Store',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              color: Colors.white,
+                              fontSize: font16 / 2,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            deviceId,  // Display fetched device ID
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              color: Colors.white70,
+                              fontSize: font16 / 2,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                       Center(
                         child: Container(
-                          margin: const EdgeInsets.only(top: 120),
+                          margin: const EdgeInsets.only(top: 80),
                           alignment: Alignment.center,
                           child: Image(
                             height: h5 * 30,
@@ -274,7 +347,10 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ],
                   ),
-                ))));
+                ),
+              ),
+            ),
+    );
   }
 
   void _checkBarcode() async {

@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'AEON PRICE CHECKER',
       // initialRoute: Routes.getDashboardPage(),
-      initialRoute: Routes.getWaitingConfigurationPage(),
+      initialRoute: Routes.getDashboardPage(),
       getPages: Routes.routes,
     );
   }
