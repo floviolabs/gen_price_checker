@@ -1,7 +1,7 @@
-import 'package:gen_price_checker/pages/dashboard_page.dart';
-import 'package:gen_price_checker/pages/found_page.dart';
-import 'package:gen_price_checker/pages/not_found_page.dart';
-import 'package:gen_price_checker/pages/waiting_configuration_page.dart';
+import 'package:price_checker/pages/dashboard_page.dart';
+import 'package:price_checker/pages/found_page.dart';
+import 'package:price_checker/pages/not_found_page.dart';
+import 'package:price_checker/pages/waiting_configuration_page.dart';
 
 import 'package:get/get.dart';
 

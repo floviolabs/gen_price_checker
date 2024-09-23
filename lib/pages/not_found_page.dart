@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gen_price_checker/routes/route_helper.dart';
+import 'package:price_checker/routes/route_helper.dart';
 
 class NotFoundPage extends StatefulWidget {
   const NotFoundPage({super.key});

@@ -45,9 +45,9 @@ class _WaitingConfigurationPageState extends State<WaitingConfigurationPage>
     //Font & Icon
     // double font12 = h2 * 6;
     // double font14 = h2 * 7;
-    double font16 = h2 * 8;
+    // double font16 = h2 * 8;
     // double font18 = h2 * 9;
-    double font20 = h2 * 10;
+    // double font20 = h2 * 10;
     // double font24 = h2 * 12;
     // double font30 = h2 * 15;
 

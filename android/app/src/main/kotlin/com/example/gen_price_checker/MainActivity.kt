@@ -1,4 +1,4 @@
-package com.example.gen_price_checker
+package com.aeon.price_checker
 
 import io.flutter.embedding.android.FlutterActivity
 

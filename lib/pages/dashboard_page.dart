@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:gen_price_checker/utilities/scanner.dart';
+import 'package:price_checker/utilities/scanner.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:gen_price_checker/routes/route_helper.dart';
+import 'package:price_checker/routes/route_helper.dart';
+import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
 class DashboardPage extends StatefulWidget {
@@ -81,6 +82,24 @@ void dispose() {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  String itemDesc = '';
+  String amountPrice = '';
+
+  String promoPrice = '';
+  String promoPriceSaved = '';
+  String promoPriceUntil = '';
+
+  String mMDesc1 = '';
+  String mMPrice = '';
+  String mMPriceSaved = '';
+  String mMPriveUntil = '';
+
+  String? storedDeviceId = '';
+  String? storedStore = '';
+  String? storedStoreName = '';
+  String? storedUrl = '';
+  String? storedType = '';
+
   final barcodeController = TextEditingController();
   String deviceId = "";
   String mResultAction = "";
@@ -90,6 +109,7 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     registerScannerBroadcast();
+
     checkDeviceId();
   }
 
@@ -97,17 +117,106 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> checkDeviceId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? storedDeviceId = prefs.getString('device_id');
 
-    if (storedDeviceId == null) {
-      // If no device ID in storage, fetch it
+    // prefs.remove('device_id');
+    // prefs.remove('store');
+    // prefs.remove('store_name');
+    // prefs.remove('url');
+    // prefs.remove('type');
+
+    storedDeviceId = prefs.getString('device_id');
+    storedStore = prefs.getString('store');
+    storedStoreName = prefs.getString('store_name');
+    storedUrl = prefs.getString('url');
+    storedType = prefs.getString('type');
+
+    if (storedStore == null) {
       await getDeviceId();
       Get.offNamed(Routes.getWaitingConfigurationPage());
+      final url = Uri.parse('https://ccm.aeonindonesia.co.id/api/v1/pc/check');
+
+      // Payload yang akan dikirim
+      Map<String, String> payload = {
+        'device_id': prefs.getString('device_id')!
+      };
+
+      try {
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(payload), // Mengonversi map ke format JSON
+        );
+
+        String a = '';
+        String b = '';
+        String c = '';
+        String d = '';
+
+        if (response.statusCode == 200) {
+          Map<String, dynamic> responseData = jsonDecode(response.body);
+          List<dynamic> data = responseData['data'];
+
+          a = data[0]['mdev_store_code'];
+          b = data[0]['mdev_store_name'];
+          c = data[0]['mdev_url'];
+          d = data[0]['mdev_type'];
+
+          await prefs.setString('store', a);
+          await prefs.setString('store_name', b);
+          await prefs.setString('url', c);
+          await prefs.setString('type', d);
+        } else {
+          //
+        }
+      } catch (e) {
+        // print('Error: $e');
+      }
     } else {
-      // If device ID exists, use it and remain on the dashboard
-      deviceId = storedDeviceId;
+      final url = Uri.parse('https://ccm.aeonindonesia.co.id/api/v1/pc/check');
+
+      // Payload yang akan dikirim
+      Map<String, String> payload = {
+        'device_id': prefs.getString('device_id')!
+      };
+
+      try {
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(payload), // Mengonversi map ke format JSON
+        );
+
+        String a = '';
+        String b = '';
+        String c = '';
+        String d = '';
+
+        if (response.statusCode == 200) {
+          Map<String, dynamic> responseData = jsonDecode(response.body);
+          List<dynamic> data = responseData['data'];
+
+          a = data[0]['mdev_store_code'];
+          b = data[0]['mdev_store_name'];
+          c = data[0]['mdev_url'];
+          d = data[0]['mdev_type'];
+
+          await prefs.setString('store', a);
+          await prefs.setString('store_name', b);
+          await prefs.setString('url', c);
+          await prefs.setString('type', d);
+        } else {
+          //
+        }
+      } catch (e) {
+        // print('Error: $e');
+      }
+      deviceId = storedDeviceId!;
       setState(() {
-        isLoading = false;  // Stop loading once device ID is fetched
+        isLoading = false; // Stop loading once device ID is fetched
       });
     }
   }
@@ -117,10 +226,11 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       if (Theme.of(context).platform == TargetPlatform.android) {
         AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-        deviceId = androidInfo.id;  // Use `id` instead of `androidId`
+        deviceId = androidInfo.id; // Use `id` instead of `androidId`
       } else if (Theme.of(context).platform == TargetPlatform.iOS) {
         IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
-        deviceId = iosInfo.identifierForVendor ?? "";  // Retrieve device ID for iOS
+        deviceId =
+            iosInfo.identifierForVendor ?? ""; // Retrieve device ID for iOS
       }
 
       // Store the device ID in local storage
@@ -131,7 +241,6 @@ class _DashboardPageState extends State<DashboardPage> {
       Get.offNamed(Routes.getWaitingConfigurationPage());
     } catch (e) {
       // Handle error
-      print('Failed to get device ID: $e');
     }
   }
 
@@ -146,7 +255,6 @@ class _DashboardPageState extends State<DashboardPage> {
   FocusNode barcodeFocusNode = FocusNode();
   @override
   Widget build(BuildContext context) {
-
     double screenHeight = MediaQuery.of(context).size.height;
 
     double h2 = screenHeight / 561;
@@ -177,48 +285,23 @@ class _DashboardPageState extends State<DashboardPage> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 173, 33, 129),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator()) // Show loading while fetching the device ID
+          ? const Center(
+              child:
+                  CircularProgressIndicator()) // Show loading while fetching the device ID
           : SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-            child: GestureDetector(
-              onTap: () {
-                FocusScope.of(context).unfocus();
-              },
-              child: Container(
-                color: Colors.transparent,
-                height: screenHeight,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // AEON Store + Device ID
-                    Container(
-                      margin: const EdgeInsets.only(top: 50),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'ÆON Store',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.white,
-                              fontSize: font16 / 2,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            deviceId,  // Display fetched device ID
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.white70,
-                              fontSize: font16 / 2,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+              child: GestureDetector(
+                onTap: () {
+                  FocusScope.of(context).unfocus();
+                },
+                child: Container(
+                  color: Colors.transparent,
+                  height: screenHeight,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // AEON Store + Device ID
                       Center(
                         child: Container(
                           margin: const EdgeInsets.only(top: 80),
@@ -282,7 +365,9 @@ class _DashboardPageState extends State<DashboardPage> {
                             focusNode: barcodeFocusNode,
                             autofocus: true,
                             controller: barcodeController,
-                            onSubmitted: (_) => _checkBarcode(),
+                            onSubmitted: (_) => storedType == 'seito'
+                                ? _checkBarcodeSeito()
+                                : _checkBarcodeOdoo(),
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize:
@@ -353,20 +438,15 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  void _checkBarcode() async {
-    // Mengambil teks dari barcodeController
+  void _checkBarcodeOdoo() async {
     String barcode = barcodeController.text;
-
-    // Fungsi untuk menambahkan nol di depan barcode
     String addLeadingZero(String barcode) {
       return '0$barcode';
     }
 
-    // Cek barcode hingga maksimal 16 digit
     bool barcodeFound = false;
     while (barcode.length <= 16 && !barcodeFound) {
-      var url = Uri.parse(
-          'https://pos.aeonindonesia.co.id/pos/price/product/7003/$barcode');
+      var url = Uri.parse('$storedUrl$barcode');
 
       try {
         var response = await http.get(url);
@@ -378,7 +458,6 @@ class _DashboardPageState extends State<DashboardPage> {
             Get.toNamed(Routes.getFoundPage(barcode));
           }
         }
-        // Tambahkan nol di depan jika barcode tidak ditemukan
         if (!barcodeFound) {
           barcode = addLeadingZero(barcode);
         }
@@ -387,10 +466,64 @@ class _DashboardPageState extends State<DashboardPage> {
         // print('Exception occurred while fetching data: $e');
       }
     }
-
-    // Jika barcode tidak ditemukan setelah mencoba hingga 16 digit, arahkan ke halaman tidak ditemukan
     if (!barcodeFound) {
       Get.toNamed(Routes.getNotFoundPage());
+    }
+  }
+
+  void _checkBarcodeSeito() async {
+    String barcode = barcodeController.text;
+
+    // Jika panjang teks kurang dari 13 digit, tambahkan "0" di depannya
+    if (barcode.length < 16) {
+      int zerosToAdd = 16 - barcode.length;
+      String zeros = "0" * zerosToAdd;
+      barcode = barcode + zeros;
+    }
+
+    var url = Uri.parse('$storedUrl$barcode');
+
+    try {
+      var response = await http.get(url);
+      if (response.statusCode == 200) {
+        var document = html_parser.parse(response.body);
+
+        var itemDescElement = document.querySelector('#ItemDesc1');
+        var amountPriceElement = document.querySelector('#UnitPrice');
+
+        var promoPriceElement = document.querySelector('#PromoPrice');
+        var promoPriceSavedElement = document.querySelector('#PromoPriceSaved');
+        var promoPriceUntilElement = document.querySelector('#PromoPriceUntil');
+
+        var mMDesc1Element = document.querySelector('#MMDesc1');
+        var mMPriceElement = document.querySelector('#MMPrice');
+        var mMPriceSavedElement = document.querySelector('#MMPriceSaved');
+        var mMPriveUntilElement = document.querySelector('#MMPriveUntil');
+
+        setState(() {
+          itemDesc = itemDescElement?.text ?? '0';
+          amountPrice = amountPriceElement?.text ?? '0';
+
+          promoPrice = promoPriceElement?.text ?? '0';
+          promoPriceSaved = promoPriceSavedElement?.text ?? '0';
+          promoPriceUntil = promoPriceUntilElement?.text ?? '0';
+
+          mMDesc1 = mMDesc1Element?.text ?? '0';
+          mMPrice = mMPriceElement?.text ?? '0';
+          mMPriceSaved = mMPriceSavedElement?.text ?? '0';
+          mMPriveUntil = mMPriveUntilElement?.text ?? '0';
+        });
+
+        if (itemDesc != '') {
+          Get.toNamed(Routes.getFoundPage(barcode));
+        } else {
+          Get.toNamed(Routes.getNotFoundPage());
+        }
+      } else {
+        // print('Failed to load data, status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      // print('Exception occurred while fetching data: $e');
     }
   }
 }

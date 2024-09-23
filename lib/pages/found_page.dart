@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:gen_price_checker/routes/route_helper.dart';
+import 'package:price_checker/routes/route_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:html/parser.dart' as html_parser;
 
 // ignore: must_be_immutable
 class FoundPage extends StatefulWidget {
@@ -17,6 +19,24 @@ class FoundPage extends StatefulWidget {
 }
 
 class _FoundPageState extends State<FoundPage> {
+  String? storedDeviceId = '';
+  String? storedStore = '';
+  String? storedStoreName = '';
+  String? storedUrl = '';
+  String? storedType = '';
+
+  String itemDesc = '';
+  String amountPrice = '';
+
+  String promoPrice = '';
+  String promoPriceSaved = '';
+  String promoPriceUntil = '';
+
+  String mMDesc1 = '';
+  String mMPrice = '';
+  String mMPriceSaved = '';
+  String mMPriceUntil = '';
+
   final barcodeController = TextEditingController();
 
   late Map<String, dynamic> productData = {};
@@ -24,18 +44,32 @@ class _FoundPageState extends State<FoundPage> {
   @override
   void initState() {
     super.initState();
-    _fetchProductData();
-    Timer(const Duration(seconds: 4), () {
+    _initializeData(); // Panggil metode asinkron di sini tanpa async/await
+
+    // Timer untuk berpindah ke dashboard
+    Timer(const Duration(seconds: 7), () {
       Get.toNamed(Routes.getDashboardPage());
     });
   }
 
-  Future<void> _fetchProductData() async {
+  Future<void> _initializeData() async {
+    super.initState();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    storedDeviceId = prefs.getString('device_id');
+    storedStore = prefs.getString('store');
+    storedStoreName = prefs.getString('store_name');
+    storedUrl = prefs.getString('url');
+    storedType = prefs.getString('type');
+
+    storedType == 'seito' ? _fetchProductDataSeito() : _fetchProductDataOdoo();
+    Timer(const Duration(seconds: 7), () {
+      Get.toNamed(Routes.getDashboardPage());
+    });
+  }
+
+  Future<void> _fetchProductDataOdoo() async {
     // await Future.delayed(const Duration(seconds: 1));
-    print(widget.id);
-    final url = Uri.parse(
-        'https://pos.aeonindonesia.co.id/pos/price/product/7003/${widget.id}');
-    // 'https://aeondb.server1601.weha-id.com/pos/price/product/7003/${widget.id}');
+    final url = Uri.parse('$storedUrl${widget.id}');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -51,45 +85,44 @@ class _FoundPageState extends State<FoundPage> {
     }
   }
 
-  // Future<void> _fetchProductData() async {
-  //   final jsonData = {
-  //     "err": false,
-  //     "msg": "",
-  //     "data": {
-  //       "display_name": "IFREE PAD TERAPI HANGAT NYERI",
-  //       "list_price": "Rp. 23.500",
-  //       "image_url":
-  //           "/weha_smart_pos_aeon_price_check/static/src/img/placeholder.png",
-  //       "current_price": "Rp. 20.500",
-  //       "is_diff": true,
-  //       "diff": 3000,
-  //       "promotion": [
-  //         {
-  //           "promotion_code": "P000517002",
-  //           "promotion_description": "BUY 1 GET 1",
-  //           "from_date": "2024-02-24",
-  //           "to_date": "2024-06-30",
-  //           "quantity": 2,
-  //           "quantity_amt": 0,
-  //           "fixed_price": 23500.0
-  //         },
-  //         {
-  //           "promotion_code": "P000517002",
-  //           "promotion_description": "BUY 1 GET 1",
-  //           "from_date": "2024-02-24",
-  //           "to_date": "2024-06-30",
-  //           "quantity": 2,
-  //           "quantity_amt": 0,
-  //           "fixed_price": 23500.0
-  //         }
-  //       ]
-  //     }
-  //   };
+  Future<void> _fetchProductDataSeito() async {
+    final url = Uri.parse('$storedUrl${widget.id}' //MCT
+        );
+    try {
+      var response = await http.get(url);
+      if (response.statusCode == 200) {
+        var document = html_parser.parse(response.body);
 
-  //   setState(() {
-  //     productData = jsonData['data'] as Map<String, dynamic>;
-  //   });
-  // }
+        var itemDescElement = document.querySelector('#ItemDesc1');
+        var amountPriceElement = document.querySelector('#UnitPrice');
+
+        var promoPriceElement = document.querySelector('#PromoPrice');
+        var promoPriceSavedElement = document.querySelector('#PromoPriceSaved');
+        var promoPriceUntilElement = document.querySelector('#PromoPriceUntil');
+
+        var mMDesc1Element = document.querySelector('#MMDesc1');
+        var mMPriceElement = document.querySelector('#MMPrice');
+        var mMPriceSavedElement = document.querySelector('#MMPriceSaved');
+        var mMPriceUntilElement = document.querySelector('#MMPriceUntil');
+
+        setState(() {
+          itemDesc = itemDescElement?.text ?? '0';
+          amountPrice = amountPriceElement?.text ?? '0';
+
+          promoPrice = promoPriceElement?.text ?? '0';
+          promoPriceSaved = promoPriceSavedElement?.text ?? '0';
+          promoPriceUntil = promoPriceUntilElement?.text ?? '0';
+
+          mMDesc1 = mMDesc1Element?.text ?? '0';
+          mMPrice = mMPriceElement?.text ?? '0';
+          mMPriceSaved = mMPriceSavedElement?.text ?? '0';
+          mMPriceUntil = mMPriceUntilElement?.text ?? '0';
+        });
+      }
+    } catch (e) {
+      // print('Error fetching data: $e');
+    }
+  }
 
   String formatDateString(String input) {
     DateTime dateTime = DateTime.parse(input);
@@ -103,29 +136,10 @@ class _FoundPageState extends State<FoundPage> {
     double screenHeight = MediaQuery.of(context).size.height;
 
     double h2 = screenHeight / 561;
-    // double h3 = screenHeight / 374;
     double h5 = screenHeight / 224.4;
-    // double h7 = screenHeight / 160.3;
 
-    //Width
-    // double w2 = screenWidth / 270;
-    // double w3 = screenWidth / 180;
-    // double w5 = screenWidth / 108;
-    // double w7 = screenWidth / 77.143;
-
-    // double rad5 = h5;
-    // double rad10 = h5 * 2;
-    // double rad20 = h5 * 4;
-    // double rad25 = h5 * 5;
-
-    //Font & Icon
-    // double font12 = h2 * 6;
-    // double font14 = h2 * 7;
-    // double font16 = h2 * 8;
     double font18 = h2 * 9;
     double font20 = h2 * 10;
-    // double font24 = h2 * 12;
-    // double font30 = h2 * 15;
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 173, 33, 129),
@@ -147,156 +161,318 @@ class _FoundPageState extends State<FoundPage> {
                   ),
                 ),
               ),
-              if (productData.isNotEmpty) ...[
-                Column(children: [
-                  if (productData['is_diff']) ...[
-                    SizedBox(
-                      width: screenWidth * 0.8,
-                      child: Center(
-                        child: Text(
-                          '${productData['display_name']}',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            color: Colors.white,
-                            fontSize: font20 * 2,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: font18,
-                    ),
-                    Text(
-                      '${productData['list_price']}',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        color: Colors.white,
-                        fontSize: font20 * 2,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.lineThrough,
-                        decorationColor: Colors.red,
-                        decorationThickness: 2,
-                      ),
-                    ),
-                    Container(
-                      margin: EdgeInsets.only(top: h5 * 10),
-                      padding: const EdgeInsets.all(50),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            'HARGA PROMO',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: const Color.fromARGB(255, 173, 33, 129),
-                              fontWeight: FontWeight.bold,
-                              fontSize: font20 * 2,
-                            ),
-                          ),
-                          Text(
-                            '${productData['current_price']}',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: const Color.fromARGB(255, 173, 33, 129),
-                              fontWeight: FontWeight.bold,
-                              fontSize: font20 * 3,
-                            ),
-                          ),
-                          Text(
-                            'HEMAT ${productData['diff']}',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: const Color.fromARGB(255, 173, 33, 129),
-                              fontWeight: FontWeight.bold,
-                              fontSize: font20 * 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else ...[
-                    SizedBox(
-                      width: screenWidth * 0.8,
-                      child: Center(
-                        child: Text(
-                          '${productData['display_name']}',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            color: Colors.white,
-                            fontSize: font20 * 2,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: font18,
-                    ),
-                    Text(
-                      '${productData['list_price']}',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        color: Colors.white,
-                        fontSize: font20 * 2,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                  if (productData['promotion'] != null &&
-                      productData['promotion'].isNotEmpty) ...[
-                    Container(
-                      margin: EdgeInsets.only(top: h5 * 5),
-                      padding: const EdgeInsets.all(50),
-                      decoration: BoxDecoration(
-                        color: Colors.yellow,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            'PROMO',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: const Color.fromARGB(255, 173, 33, 129),
-                              fontWeight: FontWeight.bold,
-                              fontSize: font20 * 2,
-                            ),
-                          ),
-                          Text(
-                            '${productData['promotion'][0]['promotion_description']}',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: const Color.fromARGB(255, 173, 33, 129),
-                              fontWeight: FontWeight.bold,
-                              fontSize: font20 * 2,
-                            ),
-                          ),
-                          Text(
-                            '${formatDateString(productData['promotion'][0]['from_date'])} - ${formatDateString(productData['promotion'][0]['to_date'])}',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: const Color.fromARGB(255, 173, 33, 129),
-                              fontWeight: FontWeight.bold,
-                              fontSize: font20,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ]
-                ]),
-                const Text('')
-              ],
+              Container(
+                  child: storedType == 'seito'
+                      ? (itemDesc.isNotEmpty)
+                          ? Column(children: [
+                              if (promoPrice != '0') ...[
+                                SizedBox(
+                                  width: screenWidth * 0.8,
+                                  child: Center(
+                                    child: Text(
+                                      itemDesc,
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        color: Colors.white,
+                                        fontSize: font20 * 2,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: font18,
+                                ),
+                                Text(
+                                  amountPrice,
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: Colors.white,
+                                    fontSize: font20 * 2,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: Colors.red,
+                                    decorationThickness: 2,
+                                  ),
+                                ),
+                                Container(
+                                  margin: EdgeInsets.only(top: h5 * 10),
+                                  padding: const EdgeInsets.all(50),
+                                  decoration: BoxDecoration(
+                                    color: Colors.yellow,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'HARGA PROMO',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 2,
+                                        ),
+                                      ),
+                                      Text(
+                                        promoPrice,
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 3,
+                                        ),
+                                      ),
+                                      Text(
+                                        'HEMAT $promoPriceSaved',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ] else ...[
+                                SizedBox(
+                                  width: screenWidth * 0.8,
+                                  child: Center(
+                                    child: Text(
+                                      itemDesc,
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        color: Colors.white,
+                                        fontSize: font20 * 2,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: font18,
+                                ),
+                                Text(
+                                  amountPrice,
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: Colors.white,
+                                    fontSize: font20 * 2,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                              if (mMDesc1 != '0' && mMDesc1.isNotEmpty) ...[
+                                Container(
+                                  margin: EdgeInsets.only(top: h5 * 5),
+                                  padding: const EdgeInsets.all(50),
+                                  decoration: BoxDecoration(
+                                    color: Colors.yellow,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'PROMO',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 2,
+                                        ),
+                                      ),
+                                      Text(
+                                        mMDesc1,
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 2,
+                                        ),
+                                      ),
+                                      Text(
+                                        'BERLAKU SAMPAI $mMPriceUntil',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ]
+                            ])
+                          : const Text('')
+                      : (productData.isNotEmpty)
+                          ? Column(children: [
+                              if (productData['is_diff']) ...[
+                                SizedBox(
+                                  width: screenWidth * 0.8,
+                                  child: Center(
+                                    child: Text(
+                                      '${productData['display_name']}',
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        color: Colors.white,
+                                        fontSize: font20 * 2,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: font18,
+                                ),
+                                Text(
+                                  '${productData['list_price']}',
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: Colors.white,
+                                    fontSize: font20 * 2,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: Colors.red,
+                                    decorationThickness: 2,
+                                  ),
+                                ),
+                                Container(
+                                  margin: EdgeInsets.only(top: h5 * 10),
+                                  padding: const EdgeInsets.all(50),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'HARGA PROMO',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 2,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${productData['current_price']}',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 3,
+                                        ),
+                                      ),
+                                      Text(
+                                        'HEMAT ${productData['diff']}',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ] else ...[
+                                SizedBox(
+                                  width: screenWidth * 0.8,
+                                  child: Center(
+                                    child: Text(
+                                      '${productData['display_name']}',
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        color: Colors.white,
+                                        fontSize: font20 * 2,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: font18,
+                                ),
+                                Text(
+                                  '${productData['list_price']}',
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: Colors.white,
+                                    fontSize: font20 * 2,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                              if (productData['promotion'] != null &&
+                                  productData['promotion'].isNotEmpty) ...[
+                                Container(
+                                  margin: EdgeInsets.only(top: h5 * 5),
+                                  padding: const EdgeInsets.all(50),
+                                  decoration: BoxDecoration(
+                                    color: Colors.yellow,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'PROMO',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 2,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${productData['promotion'][0]['promotion_description']}',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20 * 2,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${formatDateString(productData['promotion'][0]['from_date'])} - ${formatDateString(productData['promotion'][0]['to_date'])}',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: const Color.fromARGB(
+                                              255, 173, 33, 129),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: font20,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ]
+                            ])
+                          : const Text('')),
+              const Text('')
             ],
           ),
         ),
