@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:price_checker/routes/route_helper.dart';
 import 'dart:math' as math;
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 class WaitingConfigurationPage extends StatefulWidget {
   const WaitingConfigurationPage({super.key});
@@ -16,40 +20,29 @@ class _WaitingConfigurationPageState extends State<WaitingConfigurationPage>
         ..repeat();
   final barcodeController = TextEditingController();
 
+  String? storedDeviceId = '';
+  String? storedStore = '';
+  String? storedStoreName = '';
+  String? storedUrl = '';
+  String? storedType = '';
+
   @override
   void initState() {
     super.initState();
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
 
     double h2 = screenHeight / 561;
-    // double h3 = screenHeight / 374;
     double h5 = screenHeight / 224.4;
-    // double h7 = screenHeight / 160.3;
-
-    //Width
-    // double w2 = screenWidth / 270;
-    // double w3 = screenWidth / 180;
-    // double w5 = screenWidth / 108;
-    // double w7 = screenWidth / 77.143;
-
-    // double rad5 = h5;
-    // double rad10 = h5 * 2;
-    // double rad20 = h5 * 4;
-    // double rad25 = h5 * 5;
-
-    //Font & Icon
-    // double font12 = h2 * 6;
-    // double font14 = h2 * 7;
-    // double font16 = h2 * 8;
-    // double font18 = h2 * 9;
-    // double font20 = h2 * 10;
-    // double font24 = h2 * 12;
-    // double font30 = h2 * 15;
 
     return Scaffold(
         backgroundColor: const Color.fromARGB(255, 173, 33, 129),
@@ -85,6 +78,10 @@ class _WaitingConfigurationPageState extends State<WaitingConfigurationPage>
                         image: const AssetImage("assets/images/arrow.png"),
                       ),
                     ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Get.offNamed(Routes.getDashboardPage()),
+                    child: Text('Reload'),
                   ),
                   SizedBox(
                     height: h2,
